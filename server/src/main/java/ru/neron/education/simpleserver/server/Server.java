@@ -10,6 +10,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.server.ExportException;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -24,8 +25,10 @@ public class Server {
     private final AtomicLong counter = new AtomicLong();
     private final int port;
     private InetAddress inetAddress;
+    private ExecutorService service;
 
     private Server() {
+        this.service = Executors.newCachedThreadPool();
         this.port = PROPS.getPort();
         try {
             this.inetAddress = InetAddress.getByName(PROPS.getAddress());
@@ -42,7 +45,7 @@ public class Server {
         try (ServerSocket ss = new ServerSocket(port, 0, inetAddress)) {
             while (true) {
                 try {
-                    new Thread(new ServerWorker(ss.accept(), counter)).start();
+                    service.submit(new ServerWorker(ss.accept(), counter));
                 } catch (IOException ioe) {
                     logger.error("Error while server socket accept", ioe);
                 }
@@ -57,6 +60,8 @@ public class Server {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
                 logger.info("Received messages = " + counter.get());
+                List<Runnable> nonCommencedTasks = service.shutdownNow();
+                logger.info("count of tasks that never commenced execution = " + nonCommencedTasks.size());
             }
         }));
     }

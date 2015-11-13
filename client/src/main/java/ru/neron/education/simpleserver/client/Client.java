@@ -5,6 +5,7 @@ import ru.qatools.properties.PropertyLoader;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -19,10 +20,12 @@ public class Client {
     private final AtomicLong counter = new AtomicLong();
     private final int serverPort;
     private InetAddress serverAddress;
+    private ExecutorService service;
 
     public static final Client INSTANCE = new Client();
 
     private Client() {
+        this.service = Executors.newCachedThreadPool();
         this.serverPort = PROPS.getServerPort();
         try {
             this.serverAddress = InetAddress.getByName(PROPS.getServerAddress());
@@ -35,7 +38,7 @@ public class Client {
     public void send() {
         createShutDownHook();
         for (int i = 0; i < PROPS.getThreadsCount(); i++) {
-            new Thread(new ClientWorker(serverPort, serverAddress, counter)).start();
+            service.submit(new ClientWorker(serverPort, serverAddress, counter));
         }
     }
 
@@ -43,6 +46,8 @@ public class Client {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
                 logger.info("Sent out messages = " + counter.get());
+                List<Runnable> nonCommencedTasks = service.shutdownNow();
+                logger.info("count of tasks that never commenced execution = " + nonCommencedTasks.size());
             }
         }));
     }
