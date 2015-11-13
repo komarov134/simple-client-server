@@ -40,6 +40,7 @@ public class Client {
         for (int i = 0; i < PROPS.getThreadsCount(); i++) {
             service.submit(new ClientWorker(serverPort, serverAddress, counter));
         }
+        service.shutdown();
     }
 
     public void createShutDownHook() {

@@ -54,6 +54,7 @@ public class Server {
             logger.error("Error while server socket initialize", e);
             System.exit(1);
         }
+        service.shutdown();
     }
 
     public void createShutDownHook() {
